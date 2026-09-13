@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Empleado - Dermopiel</title>
+</head>
+<body>
+
+    <h1>Editar Empleado</h1>
+
+    <form method="POST">
+
+        <label>Nombres:</label><br>
+        <input type="text" name="nombres" value="{{ empleado.nombres }}"><br><br>
+
+        <label>Apellidos:</label><br>
+        <input type="text" name="apellidos" value="{{ empleado.apellidos }}"><br><br>
+
+        <label>Cargo:</label><br>
+        <input type="text" name="cargo" value="{{ empleado.cargo }}"><br><br>
+
+        <label>Teléfono:</label><br>
+        <input type="text" name="telefono" value="{{ empleado.telefono }}"><br><br>
+
+        <label>Email:</label><br>
+        <input type="email" name="email" value="{{ empleado.email }}"><br><br>
+
+        <button type="submit">Guardar cambios</button>
+
+    </form>
+
+</body>
+</html>

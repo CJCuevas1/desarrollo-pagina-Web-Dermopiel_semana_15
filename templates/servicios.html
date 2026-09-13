@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Servicios - Dermopiel</title>
+</head>
+<body>
+
+    <h1>Servicios DERMOPIEL</h1>
+
+    {% for servicio in servicios %}
+        <div>
+            <h2>{{ servicio.nombre_servicio }}</h2>
+            <p>{{ servicio.descripcion }}</p>
+            <p>Precio: ${{ servicio.precio }}</p>
+        </div>
+        <hr>
+    {% endfor %}
+
+</body>
+</html>

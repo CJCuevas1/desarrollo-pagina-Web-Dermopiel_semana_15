@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Empleados - Dermopiel</title>
+</head>
+<body>
+
+<h1>Empleados DERMOPIEL</h1>
+
+<table border="1">
+    <tr>
+        <th>ID</th>
+        <th>Nombres</th>
+        <th>Apellidos</th>
+        <th>Cargo</th>
+        <th>Teléfono</th>
+        <th>Email</th>
+        <th>Acciones</th>
+    </tr>
+
+    {% for empleado in empleados %}
+    <tr>
+        <td>{{ empleado.id_empleado }}</td>
+        <td>{{ empleado.nombres }}</td>
+        <td>{{ empleado.apellidos }}</td>
+        <td>{{ empleado.cargo }}</td>
+        <td>{{ empleado.telefono }}</td>
+        <td>{{ empleado.email }}</td>
+        <td>
+            <a href="{{ url_for('editar_empleado', id_empleado=empleado.id_empleado) }}">
+                Editar
+            </a>
+
+            <a href="{{ url_for('eliminar_empleado', id_empleado=empleado.id_empleado) }}">
+                Eliminar
+            </a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>

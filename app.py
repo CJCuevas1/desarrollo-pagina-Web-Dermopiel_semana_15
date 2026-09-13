@@ -1,71 +1,298 @@
-import os
-import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, flash
-from forms.productos_form import ProductoForm
-from forms.clientes_form import ClienteForm
-from forms.proveedores_form import ProveedorForm
-from forms.facturacion_form import FacturaForm
+from flask import Flask, render_template, request, redirect, send_from_directory
+import mysql.connector
+from forms import ClienteForm
+from conexion.conexion import get_db_connection
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'clave_secreta_dermopiel_2026'
+app.config['SECRET_KEY'] = 'dermopiel-clave-secreta'
 
-# Función para conectar a la base de datos SQLite
+# Configuración de MySQL
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = '12345'
+app.config['MYSQL_DATABASE'] = 'dermopiel'
+
+
 def get_db_connection():
-    conn = sqlite3.connect('dermopiel.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Crea y retorna una conexión a la base de datos MySQL."""
+    return mysql.connector.connect(
+        host=app.config['MYSQL_HOST'],
+        user=app.config['MYSQL_USER'],
+        password=app.config['MYSQL_PASSWORD'],
+        database=app.config['MYSQL_DATABASE']
+    )
 
-# Función para crear la tabla automáticamente si no existe
-def init_db():
+
+@app.route('/test_db')
+def test_db():
     conn = get_db_connection()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS productos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL,
-            precio REAL NOT NULL,
-            stock INTEGER NOT NULL
-        )
-    ''')
-    conn.commit()
+    cursor = conn.cursor()
+
+    cursor.execute("SHOW TABLES")
+    tables = cursor.fetchall()
+
+    cursor.close()
     conn.close()
 
-# Ejecutamos la función para crear la tabla al arrancar
-init_db()
+    if not tables:
+        return "¡Conexión exitosa a MySQL! La base de datos 'dermopiel' está conectada correctamente, pero aún no tiene tablas creadas."
 
-@app.route('/')
-def index():
-    usuario = "Carlos"
-    return render_template('index.html', usuario=usuario)
+    return f"¡Conexión exitosa! Tablas encontradas: {str(tables)}"
 
-# 1. Ruta única para ver los productos desde la base de datos
-@app.route('/productos')
-def ver_productos():
+
+@app.route('/clientes')
+def clientes():
     conn = get_db_connection()
-    cursor = conn.execute('SELECT * FROM productos')
-    lista_productos = cursor.fetchall()
-    conn.close()
-    return render_template('productos.html', productos=lista_productos)
+    cursor = conn.cursor(dictionary=True)
 
-## 2. Ruta única para registrar un nuevo producto
-@app.route('/productos/nuevo', methods=['GET', 'POST'])
-def crear_producto():
-    form = ProductoForm()
-    if form.validate_on_submit():
-        nombre = form.nombre.data
-        precio = form.precio.data
-        stock = form.stock.data
-        
-        conn = get_db_connection()
-        conn.execute(
-            'INSERT INTO productos (nombre, precio, stock) VALUES (?, ?, ?)',
-            (nombre, float(precio), stock)  # 👈 AQUÍ CONVERTIMOS EL PRECIO A FLOAT
-        )
+    cursor.execute("SELECT * FROM clientes")
+    datos = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template('clientes.html', clientes=datos)
+@app.route('/empleados')
+def empleados():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT * FROM empleados")
+    datos = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template('empleados.html', empleados=datos)
+
+
+
+@app.route('/editar_empleado/<int:id_empleado>', methods=['GET', 'POST'])
+def editar_empleado(id_empleado):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        nombres = request.form['nombres']
+        apellidos = request.form['apellidos']
+        cargo = request.form['cargo']
+        telefono = request.form['telefono']
+        email = request.form['email']
+
+        cursor.execute("""
+            UPDATE empleados
+            SET nombres = %s,
+                apellidos = %s,
+                cargo = %s,
+                telefono = %s,
+                email = %s
+            WHERE Id_empleado = %s
+        """, (nombres, apellidos, cargo, telefono, email, id_empleado))
+
         conn.commit()
+
+        cursor.close()
         conn.close()
-        
-        flash('Producto guardado correctamente en la base de datos', 'success')
-        return redirect(url_for('ver_productos'))
-        
-    return render_template('productos_form.html', form=form, titulo="Registrar Producto")
+
+        return "Empleado actualizado correctamente en MySQL"
+
+    cursor.execute(
+        "SELECT * FROM empleados WHERE Id_empleado = %s",
+        (id_empleado,)
+    )
+
+    empleado = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if empleado is None:
+        return "Empleado no encontrado"
+
+    return render_template('editar_empleado.html', empleado=empleado)
+
+
+@app.route('/eliminar_empleado/<int:id_empleado>')
+def eliminar_empleado(id_empleado):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "DELETE FROM empleados WHERE Id_empleado = %s",
+        (id_empleado,)
+    )
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return redirect('/empleados')
+
+
+@app.route('/servicios')
+def servicios():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT * FROM servicios")
+    datos = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    
+
+    return render_template('servicios.html', servicios=datos)
+
+@app.route('/editar_cliente/<int:id_cliente>', methods=['GET', 'POST'])
+def editar_cliente(id_cliente):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        nombres = request.form['nombres']
+        apellidos = request.form['apellidos']
+        telefono = request.form['telefono']
+        email = request.form['email']
+
+        cursor.execute("""
+            UPDATE clientes
+            SET nombres = %s,
+                apellidos = %s,
+                telefono = %s,
+                email = %s
+            WHERE id_cliente = %s
+        """, (nombres, apellidos, telefono, email, id_cliente))
+
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return "Cliente actualizado correctamente en MySQL"
+
+    cursor.execute(
+        "SELECT * FROM clientes WHERE id_cliente = %s",
+        (id_cliente,)
+    )
+
+    cliente = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if cliente is None:
+        return "Cliente no encontrado"
+
+    return render_template('editar_cliente.html', cliente=cliente)
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute(
+        "SELECT * FROM clientes WHERE id_cliente = %s",
+        (id_cliente,)
+    )
+    cliente = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if cliente is None:
+        return "Cliente no encontrado"
+
+    return str(cliente)
+@app.route('/eliminar_cliente/<int:id_cliente>')
+def eliminar_cliente(id_cliente):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "DELETE FROM clientes WHERE id_cliente = %s",
+        (id_cliente,)
+    )
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return redirect('/clientes')
+@app.route('/agregar_cliente')
+def agregar_cliente():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO clientes (nombres, apellidos, telefono, email)
+        VALUES ('María', 'González', '0999999999', 'maria@gmail.com')
+    """)
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return "Cliente agregado correctamente a MySQL"
+
+@app.route('/nuevo_cliente', methods=['GET', 'POST'])
+def nuevo_cliente():
+    form = ClienteForm()
+
+    if form.validate_on_submit():
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO clientes (nombres, apellidos, telefono, email)
+            VALUES (%s, %s, %s, %s)
+        """, (
+            form.nombres.data,
+            form.apellidos.data,
+            form.telefono.data,
+            form.email.data
+        ))
+
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return "Cliente guardado correctamente en MySQL"
+
+    return render_template(
+        'clientes_form.html',
+        titulo='Nuevo Cliente',
+        form=form
+    )
+@app.route('/facturacion')
+def facturacion():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT
+            f.id_factura,
+            c.nombres,
+            c.apellidos,
+            s.nombre_servicio,
+            f.fecha,
+            f.total
+        FROM facturacion f
+        INNER JOIN clientes c
+            ON f.id_cliente = c.id_cliente
+        INNER JOIN servicios s
+            ON f.id_servicio = s.id_servicio
+    """)
+
+    datos = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template('facturacion.html', facturas=datos)
+@app.route('/')
+def inicio():
+    return "DERMOPIEL - Aplicación funcionando correctamente"
+
 if __name__ == '__main__':
     app.run(debug=True)
