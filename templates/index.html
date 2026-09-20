@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card shadow-sm p-4 text-center">
+    <h1 class="fw-bold text-primary mb-3">Cuida de tu cuerpo y mente en Dermopiel</h1>
+    <p class="text-muted">Especialistas en estética facial, corporal y masajes terapéuticos.</p>
+    
+    <div class="my-3">
+        <a href="#" class="btn btn-primary me-2">Agenda tu espacio de paz</a>
+        <a href="{{ url_for('servicios') }}" class="btn btn-outline-secondary">Nuestros Servicios</a>
+    </div>
+
+    <hr class="my-4">
+
+    <div class="row text-start mt-4">
+        <div class="col-md-6 mb-3">
+            <h5 class="fw-bold">Faciales y Corporales</h5>
+            <p class="text-muted">Tratamientos avanzados para revitalizar tu piel.</p>
+        </div>
+        <div class="col-md-6 mb-3">
+            <h5 class="fw-bold">Drenajes Linfáticos y Reducción</h5>
+            <p class="text-muted">Técnicas especializadas para moldear y desintoxicar.</p>
+        </div>
+        <div class="col-md-6 mb-3">
+            <h5 class="fw-bold">Masajes y Terapias Integrales</h5>
+            <p class="text-muted">Relajación profunda para liberar el estrés diario.</p>
+        </div>
+        <div class="col-md-6 mb-3">
+            <h5 class="fw-bold">Podología</h5>
+            <p class="text-muted">Cuidado profesional y salud para tus pies.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
