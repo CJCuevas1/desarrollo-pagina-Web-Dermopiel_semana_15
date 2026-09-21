@@ -1,0 +1,28 @@
+-- 1. Tabla de Usuarios (Autenticación)
+CREATE TABLE IF NOT EXISTS usuarios (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    email VARCHAR(120) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL
+);
+
+-- 2. Tabla de Clientes
+CREATE TABLE IF NOT EXISTS clientes (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    telefono VARCHAR(20),
+    email VARCHAR(120),
+    direccion TEXT
+);
+
+-- 3. Tabla de Servicios / Citas (Relaciona Clientes y Usuarios)
+CREATE TABLE IF NOT EXISTS servicios (
+    id SERIAL PRIMARY KEY,
+    nombre_servicio VARCHAR(100) NOT NULL,
+    precio NUMERIC(10, 2) NOT NULL,
+    fecha_servicio DATE DEFAULT CURRENT_DATE,
+    cliente_id INT NOT NULL,
+    usuario_id INT NOT NULL,
+    CONSTRAINT fk_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+    CONSTRAINT fk_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);

@@ -9,12 +9,20 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = 'dermopiel-clave-secreta'
 
-# Configuración de MySQL
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = "12345"
-app.config['MYSQL_DATABASE'] = 'dermopiel'
+import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
+# Configuración de conexión para PostgreSQL (local o Render)
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:12345@localhost:5432/dermopiel')
+
+def get_db_connection():
+    db_url = DATABASE_URL
+    # Render usa 'postgres://' pero psycopg2 exige 'postgresql://'
+    if db_url and db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+    return conn
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
