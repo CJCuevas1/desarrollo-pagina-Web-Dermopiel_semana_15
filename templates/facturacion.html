@@ -4,31 +4,60 @@
     <meta charset="UTF-8">
     <title>Facturación - Dermopiel</title>
 </head>
+
 <body>
 
-<h1>Facturación DERMOPIEL</h1>
+    <h1>Facturación DERMOPIEL</h1>
 
-<table border="1">
-    <tr>
-        <th>ID Factura</th>
-        <th>Nombres</th>
-        <th>Apellidos</th>
-        <th>Servicio</th>
-        <th>Fecha</th>
-        <th>Total</th>
-    </tr>
+    <p>
+        <a href="{{ url_for('nueva_factura') }}">
+            Agregar factura
+        </a>
+    </p>
 
-    {% for factura in facturas %}
-    <tr>
-        <td>{{ factura.id_factura }}</td>
-        <td>{{ factura.nombres }}</td>
-        <td>{{ factura.apellidos }}</td>
-        <td>{{ factura.nombre_servicio }}</td>
-        <td>{{ factura.fecha }}</td>
-        <td>{{ factura.total }}</td>
-    </tr>
-    {% endfor %}
-</table>
+    <table border="1">
+        <tr>
+            <th>ID Factura</th>
+            <th>Nombres</th>
+            <th>Apellidos</th>
+            <th>Servicio</th>
+            <th>Fecha</th>
+            <th>Total</th>
+            <th>Acciones</th>
+        </tr>
+
+        {% for factura in facturas %}
+        <tr>
+            <td>{{ factura['id_factura'] }}</td>
+            <td>{{ factura['nombres'] }}</td>
+            <td>{{ factura['apellidos'] }}</td>
+            <td>{{ factura['nombre_servicio'] }}</td>
+            <td>{{ factura['fecha'] }}</td>
+            <td>${{ factura['total'] }}</td>
+
+            <td>
+                <a href="{{ url_for('editar_factura', id_factura=factura['id_factura']) }}">
+                    Editar
+                </a>
+
+                |
+
+                <a href="{{ url_for('eliminar_factura', id_factura=factura['id_factura']) }}"
+                   onclick="return confirm('¿Está seguro de eliminar esta factura?')">
+                    Eliminar
+                </a>
+            </td>
+        </tr>
+
+        {% else %}
+        <tr>
+            <td colspan="7">
+                No existen facturas registradas.
+            </td>
+        </tr>
+        {% endfor %}
+
+    </table>
 
 </body>
 </html>

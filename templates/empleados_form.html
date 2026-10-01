@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="card shadow mx-auto" style="max-width: 650px;">
+        <div class="card-body">
+
+            <h2 class="text-center mb-4">{{ titulo }}</h2>
+
+            <form method="POST">
+                {{ form.hidden_tag() }}
+
+                <div class="mb-3">
+                    {{ form.nombres.label(class="form-label") }}
+                    {{ form.nombres(class="form-control") }}
+                </div>
+
+                <div class="mb-3">
+                    {{ form.apellidos.label(class="form-label") }}
+                    {{ form.apellidos(class="form-control") }}
+                </div>
+
+                <div class="mb-3">
+                    {{ form.cargo.label(class="form-label") }}
+                    {{ form.cargo(class="form-control") }}
+                </div>
+
+                <div class="mb-3">
+                    {{ form.telefono.label(class="form-label") }}
+                    {{ form.telefono(class="form-control") }}
+                </div>
+
+                <div class="mb-3">
+                    {{ form.email.label(class="form-label") }}
+                    {{ form.email(class="form-control") }}
+                </div>
+
+                <div class="d-grid gap-2">
+                    {{ form.submit(class="btn btn-primary") }}
+
+                    <a href="{{ url_for('empleados') }}"
+                       class="btn btn-outline-secondary">
+                        Cancelar
+                    </a>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -2,40 +2,36 @@ print("=== PROBANDO ARCHIVO CORRECTO ===")
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 import mysql.connector
 import forms
-from conexion.conexion import get_db_connection
+
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
-app = Flask(__name__, static_folder='static', template_folder='templates')
-app.config['SECRET_KEY'] = 'dermopiel-clave-secreta'
-
 import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
 
-# Configuración de conexión para PostgreSQL (local o Render)
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:12345@localhost:5432/dermopiel')
+load_dotenv()
+
+app = Flask(__name__, static_folder='static', template_folder='templates')
+
+app.config['SECRET_KEY'] = os.getenv(
+    'SECRET_KEY',
+    'clave-desarrollo'
+)
 
 def get_db_connection():
-    db_url = DATABASE_URL
-    # Render usa 'postgres://' pero psycopg2 exige 'postgresql://'
-    if db_url and db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
-    conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
-    return conn
+    return mysql.connector.connect(
+        host=os.getenv('DB_HOST'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
+        database=os.getenv('DB_NAME')
+    )
+
+
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-
-def get_db_connection():
-    """Crea y retorna una conexión a la base de datos MySQL."""
-    return mysql.connector.connect(
-        host=app.config['MYSQL_HOST'],
-        user=app.config['MYSQL_USER'],
-        password=app.config['MYSQL_PASSWORD'],
-        database=app.config['MYSQL_DATABASE']
-    )
 
 # --- CLASE DE USUARIO Y CARGADOR DE SESIÓN ---
 class Usuario(UserMixin):
@@ -53,7 +49,7 @@ def load_user(user_id):
     cursor.close()
     conn.close()
     if user_data:
-        return Usuario(id=user_data['id'], usuario=user_data['usuario'], password=user_data['password'])
+        return Usuario(id=user_data['id'], usuario=user_data['nombre'], password=user_data['password'])
     return None
 
 # --- RUTAS DE BASE DE DATOS Y MODULOS ---
@@ -88,6 +84,37 @@ def empleados():
     cursor.close()
     conn.close()
     return render_template('empleados.html', empleados=datos)
+@app.route('/nuevo_empleado', methods=['GET', 'POST'])
+def nuevo_empleado():
+    form = forms.EmpleadoForm()
+
+    if form.validate_on_submit():
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO empleados
+            (nombres, apellidos, cargo, telefono, email)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            form.nombres.data,
+            form.apellidos.data,
+            form.cargo.data,
+            form.telefono.data,
+            form.email.data
+        ))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return redirect(url_for('empleados'))
+
+    return render_template(
+        'empleados_form.html',
+        titulo='Nuevo Empleado',
+        form=form
+    )
 
 @app.route('/editar_empleado/<int:id_empleado>', methods=['GET', 'POST'])
 def editar_empleado(id_empleado):
@@ -137,7 +164,109 @@ def servicios():
     cursor.close()
     conn.close()
     return render_template('servicios.html', servicios=datos)
+@app.route('/nuevo_servicio', methods=['GET', 'POST'])
+@login_required
+def nuevo_servicio():
+    form = forms.ServicioForm()
 
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT id, nombres, apellidos FROM clientes")
+    clientes = cursor.fetchall()
+
+    if form.validate_on_submit():
+        cliente_id = request.form.get('cliente_id')
+
+        cursor.execute("""
+            INSERT INTO servicios
+            (nombre_servicio, descripcion, precio, cliente_id, usuario_id)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            form.nombre_servicio.data,
+            form.descripcion.data,
+            form.precio.data,
+            cliente_id,
+            current_user.id
+        ))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return redirect(url_for('servicios'))
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        'servicios_form.html',
+        titulo='Nuevo Servicio',
+        form=form,
+        clientes=clientes
+    )
+@app.route('/editar_servicio/<int:id_servicio>', methods=['GET', 'POST'])
+@login_required
+def editar_servicio(id_servicio):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        nombre_servicio = request.form['nombre_servicio']
+        descripcion = request.form['descripcion']
+        precio = request.form['precio']
+
+        cursor.execute("""
+            UPDATE servicios
+            SET nombre_servicio = %s,
+                descripcion = %s,
+                precio = %s
+            WHERE id = %s
+        """, (
+            nombre_servicio,
+            descripcion,
+            precio,
+            id_servicio
+        ))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return redirect(url_for('servicios'))
+
+    cursor.execute(
+        "SELECT * FROM servicios WHERE id = %s",
+        (id_servicio,)
+    )
+
+    servicio = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        'editar_servicio.html',
+        servicio=servicio
+    )
+
+
+@app.route('/eliminar_servicio/<int:id_servicio>')
+@login_required
+def eliminar_servicio(id_servicio):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "DELETE FROM servicios WHERE id = %s",
+        (id_servicio,)
+    )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect(url_for('servicios'))
 @app.route('/editar_cliente/<int:id_cliente>', methods=['GET', 'POST'])
 def editar_cliente(id_cliente):
     conn = get_db_connection()
@@ -151,14 +280,14 @@ def editar_cliente(id_cliente):
         cursor.execute("""
             UPDATE clientes
             SET nombres = %s, apellidos = %s, telefono = %s, email = %s
-            WHERE id_cliente = %s
+            WHERE id = %s
         """, (nombres, apellidos, telefono, email, id_cliente))
         conn.commit()
         cursor.close()
         conn.close()
         return "Cliente actualizado correctamente en MySQL"
 
-    cursor.execute("SELECT * FROM clientes WHERE id_cliente = %s", (id_cliente,))
+    cursor.execute("SELECT * FROM clientes WHERE id = %s", (id_cliente,))
     cliente = cursor.fetchone()
     cursor.close()
     conn.close()
@@ -170,7 +299,7 @@ def editar_cliente(id_cliente):
 def eliminar_cliente(id_cliente):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM clientes WHERE id_cliente = %s", (id_cliente,))
+    cursor.execute("DELETE FROM clientes WHERE id = %s", (id_cliente,))
     conn.commit()
     cursor.close()
     conn.close()
@@ -178,7 +307,7 @@ def eliminar_cliente(id_cliente):
 
 @app.route('/nuevo_cliente', methods=['GET', 'POST'])
 def nuevo_cliente():
-    form = ClienteForm()
+    form = forms.ClienteForm()
     if form.validate_on_submit():
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -196,17 +325,162 @@ def nuevo_cliente():
 def facturacion():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
+
     cursor.execute("""
-        SELECT f.id_factura, c.nombres, c.apellidos, s.nombre_servicio, f.fecha, f.total
+        SELECT
+            f.id AS id_factura,
+            c.nombres,
+            c.apellidos,
+            s.nombre_servicio,
+            f.fecha,
+            f.total
         FROM facturacion f
-        INNER JOIN clientes c ON f.id_cliente = c.id_cliente
-        INNER JOIN servicios s ON f.id_servicio = s.id_servicio
+        INNER JOIN clientes c
+            ON f.cliente_id = c.id
+        INNER JOIN servicios s
+            ON f.servicio_id = s.id
     """)
+
     datos = cursor.fetchall()
+
     cursor.close()
     conn.close()
-    return render_template('facturacion.html', facturas=datos)
 
+    return render_template(
+        'facturacion.html',
+        facturas=datos
+    )
+
+
+@app.route('/nueva_factura', methods=['GET', 'POST'])
+@login_required
+def nueva_factura():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        cliente_id = request.form['cliente_id']
+        servicio_id = request.form['servicio_id']
+        fecha = request.form['fecha']
+        total = request.form['total']
+
+        cursor.execute("""
+            INSERT INTO facturacion
+            (cliente_id, servicio_id, fecha, total)
+            VALUES (%s, %s, %s, %s)
+        """, (
+            cliente_id,
+            servicio_id,
+            fecha,
+            total
+        ))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return redirect(url_for('facturacion'))
+
+    cursor.execute("""
+        SELECT id, nombres, apellidos
+        FROM clientes
+    """)
+    clientes = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT id, nombre_servicio
+        FROM servicios
+    """)
+    servicios = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        'facturacion_form.html',
+        clientes=clientes,
+        servicios=servicios
+    )
+
+
+@app.route('/editar_factura/<int:id_factura>', methods=['GET', 'POST'])
+@login_required
+def editar_factura(id_factura):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        cliente_id = request.form['cliente_id']
+        servicio_id = request.form['servicio_id']
+        fecha = request.form['fecha']
+        total = request.form['total']
+
+        cursor.execute("""
+            UPDATE facturacion
+            SET cliente_id = %s,
+                servicio_id = %s,
+                fecha = %s,
+                total = %s
+            WHERE id = %s
+        """, (
+            cliente_id,
+            servicio_id,
+            fecha,
+            total,
+            id_factura
+        ))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return redirect(url_for('facturacion'))
+
+    cursor.execute(
+        "SELECT * FROM facturacion WHERE id = %s",
+        (id_factura,)
+    )
+    factura = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT id, nombres, apellidos
+        FROM clientes
+    """)
+    clientes = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT id, nombre_servicio
+        FROM servicios
+    """)
+    servicios = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        'editar_factura.html',
+        factura=factura,
+        clientes=clientes,
+        servicios=servicios
+    )
+
+
+@app.route('/eliminar_factura/<int:id_factura>')
+@login_required
+def eliminar_factura(id_factura):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "DELETE FROM facturacion WHERE id = %s",
+        (id_factura,)
+    )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return redirect(url_for('facturacion'))
 @app.route('/')
 def inicio():
     return render_template('index.html')
@@ -216,26 +490,45 @@ def inicio():
 def registro():
     if current_user.is_authenticated:
         return redirect(url_for('inicio'))
-    
+
     form = forms.RegistroForm()
+
     if form.validate_on_submit():
         usuario_input = form.usuario.data
         password_hashed = generate_password_hash(form.password.data)
 
+        # Como el formulario no pide correo, generamos uno interno
+        email_generado = f"{usuario_input}@dermopiel.local"
+
         conn = get_db_connection()
         cursor = conn.cursor()
+
         try:
-            cursor.execute("INSERT INTO usuarios (usuario, password) VALUES (%s, %s)", (usuario_input, password_hashed))
+            cursor.execute(
+                """
+                INSERT INTO usuarios (nombre, email, password, rol)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (
+                    usuario_input,
+                    email_generado,
+                    password_hashed,
+                    "usuario"
+                )
+            )
+
             conn.commit()
             return redirect(url_for('login'))
-        except Exception:
+
+        except Exception as e:
+            print("ERROR EN REGISTRO:", e)
             conn.rollback()
+
         finally:
             cursor.close()
             conn.close()
 
     return render_template('registro.html', form=form)
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     import importlib
@@ -249,13 +542,13 @@ def login():
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM usuarios WHERE usuario = %s", (usuario_input,))
+        cursor.execute("SELECT * FROM usuarios WHERE nombre = %s", (usuario_input,))
         user_data = cursor.fetchone()
         cursor.close()
         conn.close()
 
         if user_data and check_password_hash(user_data['password'], password_input):
-            usuario_obj = Usuario(id=user_data['id'], usuario=user_data['usuario'], password=user_data['password'])
+            usuario_obj = Usuario(id=user_data['id'], usuario=user_data['nombre'], password=user_data['password'])
             login_user(usuario_obj)
             next_page = request.args.get('next')
             return redirect(next_page or url_for('inicio'))

@@ -4,17 +4,46 @@
     <meta charset="UTF-8">
     <title>Servicios - Dermopiel</title>
 </head>
+
 <body>
 
     <h1>Servicios DERMOPIEL</h1>
 
+    <p>
+        <a href="{{ url_for('nuevo_servicio') }}">
+            Agregar servicio
+        </a>
+    </p>
+
     {% for servicio in servicios %}
+
         <div>
-            <h2>{{ servicio.nombre_servicio }}</h2>
-            <p>{{ servicio.descripcion }}</p>
-            <p>Precio: ${{ servicio.precio }}</p>
+            <h2>{{ servicio['nombre_servicio'] }}</h2>
+
+            <p>{{ servicio['descripcion'] }}</p>
+
+            <p>Precio: ${{ servicio['precio'] }}</p>
+
+            <p>
+                <a href="{{ url_for('editar_servicio', id_servicio=servicio['id']) }}">
+                    Editar
+                </a>
+
+                |
+
+                <a href="{{ url_for('eliminar_servicio', id_servicio=servicio['id']) }}"
+                   onclick="return confirm('¿Está seguro de eliminar este servicio?')">
+                    Eliminar
+                </a>
+            </p>
         </div>
+
         <hr>
+
+    {% else %}
+
+        <p>No existen servicios registrados.</p>
+
     {% endfor %}
 
 </body>
